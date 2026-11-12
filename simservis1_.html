@@ -1,0 +1,1788 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIMServis Komputer - Sistem Informasi Jasa Servis & Invoice</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            300: '#93c5fd',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                            950: '#0f294a',
+                        },
+                        gold: {
+                            300: '#fde047',
+                            400: '#facc15',
+                            500: '#eab308',
+                            600: '#ca8a04',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #eff6ff;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #93c5fd;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3b82f6;
+        }
+
+        /* Print Media Styles: Hanya mencetak area Nota/Invoice secara bersih */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            body {
+                background: #ffffff !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            #printable-invoice-wrapper,
+            #printable-invoice-wrapper * {
+                visibility: visible;
+            }
+            #printable-invoice-wrapper {
+                position: fixed;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                box-shadow: none !important;
+                border: none !important;
+                background: white !important;
+                z-index: 9999;
+            }
+            .no-print {
+                display: none !important;
+            }
+            @page {
+                size: A4 portrait;
+                margin: 10mm;
+            }
+        }
+    </style>
+</head>
+<body class="bg-blue-50/40 text-slate-800 antialiased selection:bg-blue-700 selection:text-white">
+
+    <!-- Toast Notification Container (Pengganti alert()) -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Custom Confirmation Modal (Pengganti confirm()) -->
+    <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-brand-950/60 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-blue-100 transform transition-all">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xl shrink-0">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-slate-900" id="confirm-title">Konfirmasi Hapus</h3>
+                    <p class="text-sm text-slate-500" id="confirm-message">Apakah Anda yakin ingin menghapus data servis ini?</p>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+                <button type="button" onclick="closeConfirmModal()" class="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition">
+                    Batal
+                </button>
+                <button type="button" id="confirm-yes-btn" class="px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-600 hover:bg-red-700 shadow-sm transition">
+                    Ya, Hapus Data
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================================================================
+         1. HALAMAN UTAMA LOGIN (LOGIN SCREEN)
+    ====================================================================== -->
+    <section id="login-screen" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-950 via-blue-900 to-blue-800 p-4 relative overflow-hidden">
+        <!-- Dekorasi Latar Belakang Geometris -->
+        <div class="absolute top-0 left-0 w-96 h-96 bg-blue-400/15 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
+        <div class="absolute bottom-0 right-0 w-96 h-96 bg-yellow-400/15 rounded-full blur-3xl translate-x-1/3 translate-y-1/3"></div>
+
+        <div class="w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 relative z-10 border border-blue-200/30">
+            <!-- Panel Kiri: Branding & Info -->
+            <div class="lg:col-span-5 bg-gradient-to-b from-blue-800 to-brand-950 p-8 sm:p-10 text-white flex flex-col justify-between relative overflow-hidden">
+                <div class="absolute right-0 bottom-0 opacity-15 pointer-events-none">
+                    <svg width="240" height="240" viewBox="0 0 200 200" fill="none">
+                        <circle cx="150" cy="150" r="120" stroke="#FACC15" stroke-width="20"/>
+                        <rect x="40" y="40" width="90" height="90" rx="16" stroke="#60A5FA" stroke-width="12"/>
+                    </svg>
+                </div>
+
+                <div>
+                    <!-- Logo Geometris -->
+                    <div class="inline-flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/20 mb-8">
+                        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-yellow-400 to-yellow-300 text-brand-950 flex items-center justify-center font-extrabold shadow-md">
+                            <i class="fa-solid fa-microchip text-lg"></i>
+                        </div>
+                        <span class="font-display font-bold tracking-wide text-sm text-yellow-300">SIMSERVIS PRO</span>
+                    </div>
+
+                    <h1 class="font-display text-2xl sm:text-3xl font-extrabold leading-tight mb-4">
+                        Sistem Informasi <span class="text-yellow-400">Servis Komputer</span> & Laptop
+                    </h1>
+                    <p class="text-blue-100/85 text-sm leading-relaxed">
+                        Kelola antrian perbaikan perangkat, estimasi biaya sparepart, tracking status pengerjaan, hingga cetak nota & invoice profesional dalam satu platform terpadu.
+                    </p>
+                </div>
+
+                <div class="mt-8 pt-6 border-t border-blue-700/60 space-y-3 text-xs text-blue-100">
+                    <div class="flex items-center gap-2.5">
+                        <i class="fa-solid fa-circle-check text-yellow-400"></i>
+                        <span>Nomor Nota & Invoice Otomatis</span>
+                    </div>
+                    <div class="flex items-center gap-2.5">
+                        <i class="fa-solid fa-circle-check text-yellow-400"></i>
+                        <span>Kalkulasi Jasa & Sparepart Real-time</span>
+                    </div>
+                    <div class="flex items-center gap-2.5">
+                        <i class="fa-solid fa-circle-check text-yellow-400"></i>
+                        <span>Format Cetak Nota A4 / Half-A4 Presisi</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel Kanan: Form Login -->
+            <div class="lg:col-span-7 p-8 sm:p-12 flex flex-col justify-center bg-white">
+                <div class="mb-7">
+                    <span class="inline-block px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-xs font-semibold mb-2">
+                        Portal Administrasi & Teknisi
+                    </span>
+                    <h2 class="font-display text-2xl font-bold text-slate-900">Selamat Datang Kembali</h2>
+                    <p class="text-sm text-slate-500 mt-1">Silakan masuk menggunakan akun administrator untuk mengakses <code class="text-blue-700 font-semibold">simservis_komputer</code>.</p>
+                </div>
+
+                <!-- Alert Error Login -->
+                <div id="login-error" class="hidden mb-5 p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-center gap-3">
+                    <i class="fa-solid fa-circle-exclamation text-red-500 text-base"></i>
+                    <span id="login-error-text">Username atau password salah!</span>
+                </div>
+
+                <form id="login-form" class="space-y-5">
+                    <div>
+                        <label for="login-username" class="block text-sm font-semibold text-slate-700 mb-1.5">Username</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-blue-400">
+                                <i class="fa-solid fa-user"></i>
+                            </span>
+                            <input type="text" id="login-username" required placeholder="Masukkan username" autocomplete="username"
+                                class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/15 outline-none transition text-sm font-medium">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="login-password" class="block text-sm font-semibold text-slate-700 mb-1.5">Password</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-blue-400">
+                                <i class="fa-solid fa-lock"></i>
+                            </span>
+                            <input type="password" id="login-password" required placeholder="Masukkan password" autocomplete="current-password"
+                                class="w-full pl-10 pr-11 py-3 rounded-xl border border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/15 outline-none transition text-sm font-medium">
+                            <button type="button" onclick="togglePasswordVisibility()" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-blue-600">
+                                <i id="password-eye-icon" class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between text-xs text-slate-600 bg-yellow-50 border border-yellow-300/80 p-3 rounded-xl">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-key text-yellow-600"></i>
+                            <span>Info Akun: User <strong class="text-brand-950">*****</strong> | Pass <strong class="text-brand-950">*****</strong></span>
+                        </div>
+                        <button type="button" onclick="fillDemoCredentials()" class="text-blue-700 font-bold hover:underline">Isi Otomatis</button>
+                    </div>
+
+                    <button type="submit" class="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-blue-700 to-blue-600 hover:from-blue-800 hover:to-blue-700 text-white font-semibold text-sm shadow-lg shadow-blue-700/25 flex items-center justify-center gap-2 transition transform active:scale-[0.99]">
+                        <span>Masuk ke SIMServis Komputer</span>
+                        <i class="fa-solid fa-arrow-right text-yellow-300"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- =====================================================================
+         2. DASHBOARD & APLIKASI UTAMA (SIMSERVIS_KOMPUTER)
+    ====================================================================== -->
+    <div id="app-screen" class="hidden min-h-screen flex flex-col lg:flex-row">
+        
+        <!-- Sidebar Navigasi (Desktop & Mobile Drawer) -->
+        <aside id="sidebar" class="no-print fixed inset-y-0 left-0 z-40 w-72 bg-brand-950 text-white transform -translate-x-full lg:translate-x-0 lg:static lg:inset-auto transition-transform duration-300 ease-in-out flex flex-col justify-between shadow-xl">
+            <div>
+                <!-- Brand Header -->
+                <div class="p-6 border-b border-blue-900/80 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 text-brand-950 flex items-center justify-center font-extrabold shadow-md">
+                            <i class="fa-solid fa-laptop-medical text-lg"></i>
+                        </div>
+                        <div>
+                            <h1 class="font-display font-bold text-base tracking-tight text-white">SIMServis <span class="text-yellow-400">Komputer</span></h1>
+                            <p class="text-[11px] text-blue-300/80">v2.6 • Pusat Servis & IT</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="toggleMobileSidebar()" class="lg:hidden text-blue-300 hover:text-white p-1.5">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                </div>
+
+                <!-- Menu Navigasi -->
+                <nav class="p-4 space-y-1.5">
+                    <p class="px-3 text-[11px] font-semibold uppercase tracking-wider text-blue-400/75 mb-2">Menu Utama</p>
+                    
+                    <button type="button" onclick="switchTab('dashboard')" id="nav-dashboard"
+                        class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition bg-blue-800 text-yellow-300 shadow-sm">
+                        <i class="fa-solid fa-gauge-high w-5 text-center"></i>
+                        <span>Dashboard & Data Servis</span>
+                    </button>
+
+                    <button type="button" onclick="switchTab('input-servis')" id="nav-input-servis"
+                        class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-blue-100 hover:bg-blue-900/70 hover:text-white transition">
+                        <i class="fa-solid fa-plus-circle w-5 text-center"></i>
+                        <span>Input Servis Baru</span>
+                    </button>
+
+                    <button type="button" onclick="switchTab('nota-invoice')" id="nav-nota-invoice"
+                        class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-blue-100 hover:bg-blue-900/70 hover:text-white transition">
+                        <i class="fa-solid fa-file-invoice-dollar w-5 text-center"></i>
+                        <span>Nota / Invoice (Siap Cetak)</span>
+                    </button>
+
+                    <div class="pt-4 mt-4 border-t border-blue-900/70">
+                        <p class="px-3 text-[11px] font-semibold uppercase tracking-wider text-blue-400/75 mb-2">Pengaturan Toko</p>
+                        <button type="button" onclick="switchTab('profil-toko')" id="nav-profil-toko"
+                            class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-blue-100 hover:bg-blue-900/70 hover:text-white transition">
+                            <i class="fa-solid fa-store w-5 text-center"></i>
+                            <span>Kop Nota & Profil Toko</span>
+                        </button>
+                    </div>
+                </nav>
+            </div>
+
+            <!-- User Profile & Logout -->
+            <div class="p-4 border-t border-blue-900/80 bg-brand-950/80">
+                <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-blue-900/50 mb-3">
+                    <div class="w-9 h-9 rounded-full bg-yellow-400 text-brand-950 font-bold flex items-center justify-center text-sm">
+                        AD
+                    </div>
+                    <div class="overflow-hidden">
+                        <p class="text-sm font-semibold text-white truncate">Administrator</p>
+                        <p class="text-xs text-blue-300 truncate">@admin • Online</p>
+                    </div>
+                </div>
+                <button type="button" onclick="logoutApp()" class="w-full py-2.5 px-4 rounded-xl bg-red-600/90 hover:bg-red-600 text-white text-sm font-semibold flex items-center justify-center gap-2 transition shadow-sm">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Keluar (Logout)</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Backdrop Mobile Sidebar -->
+        <div id="sidebar-backdrop" onclick="toggleMobileSidebar()" class="no-print fixed inset-0 bg-brand-950/50 z-30 hidden lg:hidden"></div>
+
+        <!-- Konten Utama -->
+        <div class="flex-1 flex flex-col min-w-0">
+            <!-- Top Header Bar -->
+            <header class="no-print bg-white border-b border-blue-100 px-4 sm:px-8 py-4 flex items-center justify-between sticky top-0 z-20 shadow-xs">
+                <div class="flex items-center gap-3">
+                    <button type="button" onclick="toggleMobileSidebar()" class="lg:hidden p-2 rounded-xl text-blue-800 hover:bg-blue-50">
+                        <i class="fa-solid fa-bars text-lg"></i>
+                    </button>
+                    <div>
+                        <h2 id="page-title" class="font-display text-lg sm:text-xl font-bold text-brand-950">Dashboard & Data Servis</h2>
+                        <p id="current-date-display" class="text-xs text-slate-500">Kamis, 12 November 2026</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2.5">
+                    <button type="button" onclick="switchTab('input-servis')" class="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold flex items-center gap-2 shadow-sm transition">
+                        <i class="fa-solid fa-plus"></i>
+                        <span class="hidden sm:inline">Servis Baru</span>
+                    </button>
+                    <button type="button" onclick="openBlankInvoice()" class="px-3.5 py-2 rounded-xl bg-yellow-400 hover:bg-yellow-500 text-brand-950 text-xs sm:text-sm font-bold flex items-center gap-2 shadow-sm transition">
+                        <i class="fa-solid fa-print"></i>
+                        <span class="hidden sm:inline">Buat Nota</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Main Workspace Container -->
+            <main class="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto">
+
+                <!-- ===============================================================
+                     TAB 1: DASHBOARD & DATA SERVIS
+                ================================================================ -->
+                <div id="tab-dashboard" class="tab-content space-y-6">
+                    
+                    <!-- Kartu Statistik Real-time -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
+                        <!-- Total Servis -->
+                        <div class="bg-white p-5 rounded-2xl border border-blue-100 shadow-sm flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Servis</p>
+                                <h3 id="stat-total" class="font-display text-2xl sm:text-3xl font-extrabold text-brand-950 mt-1">0</h3>
+                                <p class="text-xs text-slate-500 mt-1">Semua unit terdaftar</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl">
+                                <i class="fa-solid fa-laptop-code"></i>
+                            </div>
+                        </div>
+
+                        <!-- Sedang Dikerjakan -->
+                        <div class="bg-white p-5 rounded-2xl border border-yellow-200/80 shadow-sm flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Sedang Dikerjakan</p>
+                                <h3 id="stat-proses" class="font-display text-2xl sm:text-3xl font-extrabold text-yellow-600 mt-1">0</h3>
+                                <p class="text-xs text-slate-500 mt-1">Antrian & proses teknisi</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-2xl bg-yellow-100 text-yellow-700 flex items-center justify-center text-xl">
+                                <i class="fa-solid fa-screwdriver-wrench"></i>
+                            </div>
+                        </div>
+
+                        <!-- Selesai / Diambil -->
+                        <div class="bg-white p-5 rounded-2xl border border-blue-100 shadow-sm flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Servis Selesai</p>
+                                <h3 id="stat-selesai" class="font-display text-2xl sm:text-3xl font-extrabold text-blue-600 mt-1">0</h3>
+                                <p class="text-xs text-slate-500 mt-1">Siap diambil & lunas</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center text-xl">
+                                <i class="fa-solid fa-circle-check"></i>
+                            </div>
+                        </div>
+
+                        <!-- Total Pendapatan -->
+                        <div class="bg-gradient-to-br from-blue-800 to-brand-950 p-5 rounded-2xl text-white shadow-md flex items-center justify-between border border-blue-700">
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-wider text-blue-200">Total Pendapatan</p>
+                                <h3 id="stat-pendapatan" class="font-display text-xl sm:text-2xl font-extrabold text-yellow-300 mt-1">Rp 0</h3>
+                                <p class="text-xs text-blue-200/80 mt-1">Akumulasi biaya servis</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-2xl bg-white/10 text-yellow-300 flex items-center justify-center text-xl">
+                                <i class="fa-solid fa-wallet"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filter, Pencarian & Tabel Data Servis -->
+                    <div class="bg-white rounded-2xl border border-blue-100 shadow-sm overflow-hidden">
+                        <div class="p-5 border-b border-blue-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div>
+                                <h3 class="font-display font-bold text-base text-brand-950">Daftar Transaksi & Antrian Servis</h3>
+                                <p class="text-xs text-slate-500">Kelola status pengerjaan, rincian biaya, atau cetak nota pelanggan.</p>
+                            </div>
+
+                            <div class="flex flex-col sm:flex-row gap-3">
+                                <!-- Input Pencarian -->
+                                <div class="relative">
+                                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-400 text-xs"></i>
+                                    <input type="text" id="search-input" onkeyup="renderServiceTable()" placeholder="Cari No. Nota, Nama, Merk..."
+                                        class="w-full sm:w-64 pl-9 pr-4 py-2 rounded-xl border border-slate-200 text-sm focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 outline-none">
+                                </div>
+
+                                <!-- Filter Status -->
+                                <select id="filter-status" onchange="renderServiceTable()"
+                                    class="px-3.5 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-700 bg-white focus:border-blue-600 outline-none">
+                                    <option value="ALL">Semua Status</option>
+                                    <option value="Antrian">Antrian</option>
+                                    <option value="Proses Pengerjaan">Proses Pengerjaan</option>
+                                    <option value="Menunggu Sparepart">Menunggu Sparepart</option>
+                                    <option value="Selesai">Selesai</option>
+                                    <option value="Sudah Diambil">Sudah Diambil</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Responsive Table -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-blue-50/70 border-b border-blue-100 text-[11px] font-bold uppercase tracking-wider text-brand-950">
+                                        <th class="py-3.5 px-4">No. Nota & Tgl</th>
+                                        <th class="py-3.5 px-4">Pelanggan</th>
+                                        <th class="py-3.5 px-4">Perangkat & Keluhan</th>
+                                        <th class="py-3.5 px-4">Total Biaya</th>
+                                        <th class="py-3.5 px-4">Status Pengerjaan</th>
+                                        <th class="py-3.5 px-4 text-right">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="service-table-body" class="divide-y divide-slate-100 text-sm">
+                                    <!-- Baris data dirender via JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Empty State -->
+                        <div id="empty-table-state" class="hidden py-12 px-4 text-center">
+                            <div class="w-16 h-16 rounded-full bg-blue-50 text-blue-400 flex items-center justify-center mx-auto mb-3 text-2xl">
+                                <i class="fa-solid fa-folder-open"></i>
+                            </div>
+                            <h4 class="font-semibold text-slate-800">Tidak ada data servis ditemukan</h4>
+                            <p class="text-xs text-slate-500 mt-1 mb-4">Coba ubah kata kunci pencarian atau tambahkan transaksi servis baru.</p>
+                            <button type="button" onclick="switchTab('input-servis')" class="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700">
+                                + Input Servis Baru
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===============================================================
+                     TAB 2: INPUT & EDIT DATA SERVIS KOMPUTER
+                ================================================================ -->
+                <div id="tab-input-servis" class="tab-content hidden">
+                    <div class="bg-white rounded-2xl border border-blue-100 shadow-sm overflow-hidden">
+                        <div class="p-6 bg-gradient-to-r from-brand-950 to-blue-800 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                                <h3 id="form-servis-title" class="font-display text-lg font-bold">Form Input Data Servis Komputer</h3>
+                                <p class="text-xs text-blue-200 mt-0.5">Lengkapi data pelanggan, spesifikasi perangkat, keluhan, serta rincian jasa & sparepart.</p>
+                            </div>
+                            <button type="button" onclick="resetServiceForm()" class="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold text-yellow-300 border border-white/20 self-start sm:self-auto">
+                                <i class="fa-solid fa-rotate-right mr-1"></i> Reset Form
+                            </button>
+                        </div>
+
+                        <form id="service-form" class="p-6 space-y-6">
+                            <input type="hidden" id="edit-service-id" value="">
+
+                            <!-- Bagian 1: Identitas Nota & Pelanggan -->
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Nomor Nota (Otomatis)</label>
+                                    <input type="text" id="srv-nota" readonly
+                                        class="w-full px-3.5 py-2.5 rounded-xl bg-blue-50/70 border border-blue-200 text-sm font-bold text-blue-900 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Tanggal Masuk *</label>
+                                    <input type="date" id="srv-tanggal" required
+                                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-blue-600 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Nama Pelanggan *</label>
+                                    <input type="text" id="srv-nama" required placeholder="Contoh: Budi Santoso"
+                                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-blue-600 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">No. HP / WhatsApp *</label>
+                                    <input type="text" id="srv-hp" required placeholder="Contoh: 0812-3456-7890"
+                                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-blue-600 outline-none">
+                                </div>
+                            </div>
+
+                            <!-- Bagian 2: Detail Perangkat & Keluhan -->
+                            <div class="pt-4 border-t border-slate-100 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Jenis Perangkat *</label>
+                                    <select id="srv-jenis" required
+                                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white focus:border-blue-600 outline-none">
+                                        <option value="Laptop">Laptop / Notebook</option>
+                                        <option value="PC Desktop">PC Desktop / Rakitan</option>
+                                        <option value="Printer">Printer / Scanner</option>
+                                        <option value="Monitor">Monitor / AIO</option>
+                                        <option value="Lainnya">Lainnya (Networking/Storage)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Merk & Tipe Perangkat *</label>
+                                    <input type="text" id="srv-merk" required placeholder="Contoh: Asus ROG Strix G15 / Lenovo ThinkPad"
+                                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-blue-600 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Kelengkapan</label>
+                                    <input type="text" id="srv-kelengkapan" placeholder="Contoh: Unit + Charger + Tas"
+                                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-blue-600 outline-none">
+                                </div>
+
+                                <div class="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Keluhan / Kerusakan *</label>
+                                        <textarea id="srv-keluhan" rows="2" required placeholder="Jelaskan kerusakan perangkat (misal: Mati total, LCD bergaris, Ganti SSD & Install ulang Windows 11)"
+                                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-blue-600 outline-none"></textarea>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Tindakan / Catatan Teknisi</label>
+                                        <textarea id="srv-tindakan" rows="2" placeholder="Tindakan perbaikan yang dilakukan teknisi..."
+                                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-blue-600 outline-none"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Bagian 3: Rincian Biaya Jasa Servis & Sparepart Dinamis -->
+                            <div class="pt-4 border-t border-slate-100">
+                                <div class="flex items-center justify-between mb-3">
+                                    <div>
+                                        <h4 class="text-sm font-bold text-brand-950">Rincian Biaya Jasa Servis & Sparepart</h4>
+                                        <p class="text-xs text-slate-500">Tambahkan item jasa pengerjaan maupun penggantian komponen/sparepart.</p>
+                                    </div>
+                                    <button type="button" onclick="addCostItemRow()" class="px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold flex items-center gap-1.5 border border-blue-200 transition">
+                                        <i class="fa-solid fa-plus"></i> Tambah Item Biaya
+                                    </button>
+                                </div>
+
+                                <div class="overflow-x-auto border border-blue-100 rounded-xl">
+                                    <table class="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr class="bg-blue-50/70 border-b border-blue-100 text-[11px] font-bold uppercase text-brand-950">
+                                                <th class="py-2.5 px-3 w-36">Kategori</th>
+                                                <th class="py-2.5 px-3">Nama Jasa / Sparepart</th>
+                                                <th class="py-2.5 px-3 w-20 text-center">Qty</th>
+                                                <th class="py-2.5 px-3 w-40">Harga Satuan (Rp)</th>
+                                                <th class="py-2.5 px-3 w-40 text-right">Subtotal</th>
+                                                <th class="py-2.5 px-3 w-12 text-center">Hapus</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="cost-items-body" class="divide-y divide-slate-100 text-sm">
+                                            <!-- Item biaya dinamis ditambahkan di sini -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Bagian 4: Status, Garansi, DP & Ringkasan Pembayaran -->
+                            <div class="pt-4 border-t border-slate-100 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                                <div class="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Status Pengerjaan</label>
+                                        <select id="srv-status"
+                                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold bg-white focus:border-blue-600 outline-none">
+                                            <option value="Antrian">Antrian</option>
+                                            <option value="Proses Pengerjaan">Proses Pengerjaan</option>
+                                            <option value="Menunggu Sparepart">Menunggu Sparepart</option>
+                                            <option value="Selesai">Selesai</option>
+                                            <option value="Sudah Diambil">Sudah Diambil</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Garansi Servis</label>
+                                        <select id="srv-garansi"
+                                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white focus:border-blue-600 outline-none">
+                                            <option value="Tanpa Garansi">Tanpa Garansi</option>
+                                            <option value="7 Hari">7 Hari</option>
+                                            <option value="14 Hari">14 Hari</option>
+                                            <option value="1 Bulan (30 Hari)" selected>1 Bulan (30 Hari)</option>
+                                            <option value="3 Bulan">3 Bulan</option>
+                                            <option value="1 Tahun (Sparepart)">1 Tahun (Sparepart)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Uang Muka / DP (Rp)</label>
+                                        <input type="number" id="srv-dp" min="0" value="0" oninput="recalculateFormTotals()"
+                                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:border-blue-600 outline-none">
+                                    </div>
+                                </div>
+
+                                <!-- Box Total Biaya -->
+                                <div class="lg:col-span-5 bg-blue-50/80 border border-blue-200 rounded-2xl p-4 space-y-2">
+                                    <div class="flex justify-between text-sm text-slate-600">
+                                        <span>Total Biaya Servis & Part:</span>
+                                        <span id="form-total-display" class="font-bold text-slate-900">Rp 0</span>
+                                    </div>
+                                    <div class="flex justify-between text-sm text-slate-600">
+                                        <span>Uang Muka (DP):</span>
+                                        <span id="form-dp-display" class="font-semibold text-blue-700">Rp 0</span>
+                                    </div>
+                                    <div class="pt-2 border-t border-blue-200 flex justify-between items-center">
+                                        <span class="text-sm font-bold text-brand-950">Sisa Tagihan:</span>
+                                        <span id="form-sisa-display" class="font-display text-xl font-extrabold text-blue-700">Rp 0</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tombol Submit -->
+                            <div class="pt-4 border-t border-slate-100 flex flex-wrap justify-end gap-3">
+                                <button type="button" onclick="switchTab('dashboard')" class="px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold transition">
+                                    Batal
+                                </button>
+                                <button type="submit" name="action" value="save" class="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-md flex items-center gap-2 transition">
+                                    <i class="fa-solid fa-floppy-disk"></i>
+                                    <span>Simpan Data Servis</span>
+                                </button>
+                                <button type="button" onclick="saveAndPrintService()" class="px-6 py-3 rounded-xl bg-yellow-400 hover:bg-yellow-500 text-brand-950 text-sm font-bold shadow-md flex items-center gap-2 transition">
+                                    <i class="fa-solid fa-print"></i>
+                                    <span>Simpan & Cetak Nota</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- ===============================================================
+                     TAB 3: NOTA / INVOICE INPUT & SIAP CETAK
+                ================================================================ -->
+                <div id="tab-nota-invoice" class="tab-content hidden space-y-6">
+                    
+                    <!-- Control Bar (Tidak ikut tercetak saat window.print()) -->
+                    <div class="no-print bg-white p-5 rounded-2xl border border-blue-100 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <div class="flex-1 max-w-xl">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Pilih Data Servis untuk Dicetak ke Nota:</label>
+                            <div class="flex gap-2">
+                                <select id="invoice-service-selector" onchange="loadServiceIntoInvoice(this.value)"
+                                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 bg-blue-50/40 focus:border-blue-600 outline-none">
+                                    <option value="">-- Buat Nota Manual / Kosong --</option>
+                                </select>
+                                <button type="button" onclick="openBlankInvoice()" class="px-3.5 py-2.5 rounded-xl bg-yellow-100 hover:bg-yellow-200 text-brand-950 text-xs font-bold shrink-0 border border-yellow-300" title="Buat Nota Baru Manual">
+                                    <i class="fa-solid fa-file-circle-plus"></i> Baru
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-3">
+                            <button type="button" onclick="toggleQuickEditInvoice()" id="btn-toggle-invoice-edit"
+                                class="px-4 py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-sm font-semibold flex items-center gap-2 transition">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                                <span>Edit Isi Nota Langsung</span>
+                            </button>
+                            <button type="button" onclick="window.print()"
+                                class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-700 to-blue-600 hover:from-blue-800 hover:to-blue-700 text-white text-sm font-bold shadow-lg shadow-blue-700/25 flex items-center gap-2 transition">
+                                <i class="fa-solid fa-print text-yellow-300"></i>
+                                <span>Cetak Nota (Print)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Panel Input Cepat Nota Langsung -->
+                    <div id="quick-invoice-editor" class="no-print hidden bg-white p-6 rounded-2xl border-2 border-yellow-400 shadow-md space-y-5">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h4 class="font-display font-bold text-brand-950 flex items-center gap-2">
+                                <i class="fa-solid fa-pen-nib text-yellow-500"></i>
+                                <span>Editor Input Nota Langsung (Real-Time Preview)</span>
+                            </h4>
+                            <button type="button" onclick="toggleQuickEditInvoice()" class="text-xs font-semibold text-slate-500 hover:text-slate-800">Tutup Editor</button>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">No. Nota / Invoice</label>
+                                <input type="text" id="inv-edit-nota" oninput="syncManualInvoicePreview()" class="w-full px-3 py-2 rounded-lg border border-slate-200 font-bold text-blue-900">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">Tanggal Nota</label>
+                                <input type="date" id="inv-edit-tanggal" oninput="syncManualInvoicePreview()" class="w-full px-3 py-2 rounded-lg border border-slate-200">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">Nama Pelanggan</label>
+                                <input type="text" id="inv-edit-nama" oninput="syncManualInvoicePreview()" placeholder="Nama Pelanggan" class="w-full px-3 py-2 rounded-lg border border-slate-200">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">No. HP / WA</label>
+                                <input type="text" id="inv-edit-hp" oninput="syncManualInvoicePreview()" placeholder="08xx-xxxx-xxxx" class="w-full px-3 py-2 rounded-lg border border-slate-200">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">Perangkat & Merk</label>
+                                <input type="text" id="inv-edit-perangkat" oninput="syncManualInvoicePreview()" placeholder="Laptop Asus / PC" class="w-full px-3 py-2 rounded-lg border border-slate-200">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">Keluhan / Kerusakan</label>
+                                <input type="text" id="inv-edit-keluhan" oninput="syncManualInvoicePreview()" placeholder="Kerusakan..." class="w-full px-3 py-2 rounded-lg border border-slate-200">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">Status & Garansi</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="inv-edit-status" oninput="syncManualInvoicePreview()" placeholder="Selesai" class="w-1/2 px-3 py-2 rounded-lg border border-slate-200">
+                                    <input type="text" id="inv-edit-garansi" oninput="syncManualInvoicePreview()" placeholder="30 Hari" class="w-1/2 px-3 py-2 rounded-lg border border-slate-200">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">Uang Muka / DP (Rp)</label>
+                                <input type="number" id="inv-edit-dp" min="0" value="0" oninput="syncManualInvoicePreview()" class="w-full px-3 py-2 rounded-lg border border-slate-200 font-semibold">
+                            </div>
+                        </div>
+
+                        <!-- Item Nota Manual -->
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-bold uppercase text-slate-500">Daftar Item Jasa / Sparepart di Nota</span>
+                                <button type="button" onclick="addManualInvoiceItem()" class="text-xs font-bold text-blue-700 hover:underline">+ Tambah Baris Item</button>
+                            </div>
+                            <div id="inv-edit-items-list" class="space-y-2"></div>
+                        </div>
+                    </div>
+
+                    <!-- ===========================================================
+                         AREA PREVIEW NOTA / INVOICE SIAP CETAK (A4 / HALF-A4)
+                    ============================================================ -->
+                    <div class="flex justify-center">
+                        <div id="printable-invoice-wrapper" class="w-full max-w-[210mm] bg-white rounded-2xl shadow-lg border border-blue-100 p-6 sm:p-10 text-slate-800">
+                            
+                            <!-- KOP SURAT / HEADER TOKO -->
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-5 border-b-2 border-blue-800 gap-4">
+                                <div class="flex items-center gap-4">
+                                    <!-- Logo Geometris SVG Biru & Kuning -->
+                                    <div class="w-14 h-14 rounded-2xl bg-brand-950 flex items-center justify-center shrink-0 border-2 border-yellow-400">
+                                        <svg width="34" height="34" viewBox="0 0 36 36" fill="none">
+                                            <rect x="4" y="6" width="28" height="19" rx="3" stroke="#FACC15" stroke-width="2.5"/>
+                                            <path d="M12 30H24M18 25V30" stroke="#60A5FA" stroke-width="2.5" stroke-linecap="round"/>
+                                            <path d="M13 15.5L16.5 19L23.5 12" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h1 id="print-shop-name" class="font-display text-xl sm:text-2xl font-extrabold text-brand-950 tracking-tight">SIMSERVIS KOMPUTER CENTER</h1>
+                                        <p id="print-shop-tagline" class="text-xs font-semibold text-blue-700">Spesialis Perbaikan Laptop, PC Rakitan, Printer & Pengadaan Sparepart IT</p>
+                                        <p id="print-shop-address" class="text-xs text-slate-500 mt-0.5">Jl. Budi Utomo No. 45, Timika • Telp/WA: 0811-4890-2211</p>
+                                    </div>
+                                </div>
+
+                                <div class="text-left sm:text-right bg-blue-50 px-4 py-2.5 rounded-xl border border-blue-200 self-stretch sm:self-auto">
+                                    <span class="text-[10px] font-bold uppercase tracking-widest text-blue-700 block">NOTA SERVIS / INVOICE</span>
+                                    <span id="print-nota-no" class="font-display text-base sm:text-lg font-extrabold text-brand-950">SRV-20261112-001</span>
+                                    <span id="print-nota-date" class="block text-xs text-slate-600 mt-0.5">Tanggal: 12 November 2026</span>
+                                </div>
+                            </div>
+
+                            <!-- INFORMASI PELANGGAN & UNIT PERANGKAT -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 my-5 text-xs">
+                                <div class="p-3.5 rounded-xl bg-blue-50/40 border border-blue-100 space-y-1.5">
+                                    <p class="font-bold uppercase tracking-wider text-blue-800 text-[11px] border-b border-blue-100 pb-1">Data Pelanggan</p>
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-500">Nama Pelanggan:</span>
+                                        <span id="print-cust-name" class="font-bold text-slate-900">-</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-500">No. HP / WhatsApp:</span>
+                                        <span id="print-cust-phone" class="font-semibold text-slate-800">-</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-500">Status Servis:</span>
+                                        <span id="print-srv-status" class="font-bold text-blue-700">-</span>
+                                    </div>
+                                </div>
+
+                                <div class="p-3.5 rounded-xl bg-blue-50/40 border border-blue-100 space-y-1.5">
+                                    <p class="font-bold uppercase tracking-wider text-blue-800 text-[11px] border-b border-blue-100 pb-1">Detail Unit & Keluhan</p>
+                                    <div class="flex justify-between gap-2">
+                                        <span class="text-slate-500 shrink-0">Perangkat / Merk:</span>
+                                        <span id="print-device-info" class="font-bold text-slate-900 text-right">-</span>
+                                    </div>
+                                    <div class="flex justify-between gap-2">
+                                        <span class="text-slate-500 shrink-0">Kelengkapan:</span>
+                                        <span id="print-device-acc" class="font-medium text-slate-800 text-right">-</span>
+                                    </div>
+                                    <div class="flex justify-between gap-2">
+                                        <span class="text-slate-500 shrink-0">Garansi Servis:</span>
+                                        <span id="print-warranty" class="font-bold text-yellow-700">-</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Kotak Keluhan & Tindakan -->
+                            <div class="mb-5 p-3 rounded-xl border border-blue-100 bg-white text-xs space-y-1">
+                                <div><span class="font-bold text-brand-950">Keluhan / Kerusakan:</span> <span id="print-complaint" class="text-slate-700">-</span></div>
+                                <div><span class="font-bold text-brand-950">Tindakan Perbaikan:</span> <span id="print-action" class="text-slate-700">-</span></div>
+                            </div>
+
+                            <!-- TABEL RINCIAN BIAYA JASA & SPAREPART -->
+                            <div class="overflow-hidden rounded-xl border border-blue-200 mb-5">
+                                <table class="w-full text-left border-collapse text-xs">
+                                    <thead>
+                                        <tr class="bg-brand-950 text-white uppercase tracking-wider text-[11px]">
+                                            <th class="py-2.5 px-3 w-10 text-center">No</th>
+                                            <th class="py-2.5 px-3 w-28">Kategori</th>
+                                            <th class="py-2.5 px-3">Deskripsi Jasa / Sparepart</th>
+                                            <th class="py-2.5 px-3 w-14 text-center">Qty</th>
+                                            <th class="py-2.5 px-3 w-28 text-right">Harga</th>
+                                            <th class="py-2.5 px-3 w-32 text-right">Subtotal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="print-items-body" class="divide-y divide-slate-200">
+                                        <!-- Item nota dirender via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- RINGKASAN TOTAL & SYARAT GARANSI -->
+                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-6 items-start mb-8">
+                                <div class="sm:col-span-7 text-[11px] text-slate-600 bg-blue-50/40 p-3.5 rounded-xl border border-blue-100 space-y-1">
+                                    <p class="font-bold text-brand-950 uppercase">Syarat & Ketentuan Servis / Garansi:</p>
+                                    <ul class="list-disc pl-4 space-y-0.5">
+                                        <li>Nota ini wajib dibawa saat pengambilan unit atau klaim garansi.</li>
+                                        <li>Garansi hanya berlaku untuk kerusakan & sparepart yang sama sesuai tercatat di nota.</li>
+                                        <li>Garansi batal apabila segel rusak, terkena cairan, jatuh, atau kesalahan pemakaian (human error).</li>
+                                        <li>Barang servis yang tidak diambil lebih dari 30 hari setelah konfirmasi selesai bukan tanggung jawab kami.</li>
+                                    </ul>
+                                </div>
+
+                                <div class="sm:col-span-5 space-y-2 text-xs">
+                                    <div class="flex justify-between py-1.5 px-3 bg-blue-50/60 rounded-lg">
+                                        <span class="font-semibold text-slate-600">Total Biaya:</span>
+                                        <span id="print-total" class="font-bold text-slate-900">Rp 0</span>
+                                    </div>
+                                    <div class="flex justify-between py-1.5 px-3 bg-blue-50/60 rounded-lg">
+                                        <span class="font-semibold text-slate-600">Uang Muka (DP):</span>
+                                        <span id="print-dp" class="font-semibold text-blue-700">Rp 0</span>
+                                    </div>
+                                    <div class="flex justify-between items-center py-2.5 px-3.5 bg-brand-950 text-white rounded-xl border border-blue-800">
+                                        <span class="font-bold uppercase tracking-wider text-[11px]">Sisa Bayar:</span>
+                                        <span id="print-balance" class="font-display text-base font-extrabold text-yellow-300">Rp 0</span>
+                                    </div>
+                                    <div id="print-paid-badge" class="hidden text-center py-1 rounded-lg bg-yellow-100 text-brand-950 font-extrabold text-[11px] tracking-widest uppercase border border-yellow-400">
+                                        *** LUNAS ***
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- KOLOM TANDA TANGAN -->
+                            <div class="grid grid-cols-2 gap-8 pt-4 text-center text-xs">
+                                <div>
+                                    <p class="text-slate-500 mb-14">Pelanggan / Pemilik Unit,</p>
+                                    <p id="print-sign-customer" class="font-bold text-slate-900 underline decoration-slate-400 underline-offset-4">( .................................... )</p>
+                                </div>
+                                <div>
+                                    <p class="text-slate-500 mb-14">Hormat Kami, Teknisi / Admin</p>
+                                    <p id="print-sign-admin" class="font-bold text-brand-950 underline decoration-blue-600 underline-offset-4">( Admin SIMServis )</p>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===============================================================
+                     TAB 4: PENGATURAN KOP NOTA & PROFIL TOKO
+                ================================================================ -->
+                <div id="tab-profil-toko" class="tab-content hidden">
+                    <div class="max-w-2xl bg-white rounded-2xl border border-blue-100 shadow-sm overflow-hidden">
+                        <div class="p-6 bg-brand-950 text-white">
+                            <h3 class="font-display text-lg font-bold">Pengaturan Identitas & Kop Nota Toko</h3>
+                            <p class="text-xs text-blue-200 mt-0.5">Informasi ini akan otomatis ditampilkan pada header cetak Nota / Invoice.</p>
+                        </div>
+                        <form id="shop-profile-form" class="p-6 space-y-4 text-sm">
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-500 mb-1.5">Nama Usaha / Toko Servis</label>
+                                <input type="text" id="shop-name-input" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-blue-600 outline-none font-semibold">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-500 mb-1.5">Slogan / Layanan Utama</label>
+                                <input type="text" id="shop-tagline-input" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-blue-600 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-500 mb-1.5">Alamat Lengkap & Nomor Telepon / WA</label>
+                                <input type="text" id="shop-address-input" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-blue-600 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-500 mb-1.5">Nama Penanggung Jawab / Admin Nota</label>
+                                <input type="text" id="shop-admin-input" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-blue-600 outline-none">
+                            </div>
+                            <div class="pt-3 flex justify-end">
+                                <button type="submit" class="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm transition">
+                                    Simpan Pengaturan Toko
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- =====================================================================
+         JAVASCRIPT LOGIC (AUTHENTICATION, CRUD LOCALSTORAGE, INVOICE ENGINE)
+    ====================================================================== -->
+    <script>
+        // --- KONSTANTA & STATE APLIKASI ---
+        const STORAGE_KEY_SERVICES = 'simservis_komputer_data_v1';
+        const STORAGE_KEY_AUTH = 'simservis_komputer_auth_v1';
+        const STORAGE_KEY_SHOP = 'simservis_komputer_shop_v1';
+
+        let servicesData = [];
+        let shopProfile = {
+            name: 'SIMSERVIS KOMPUTER CENTER',
+            tagline: 'Spesialis Perbaikan Laptop, PC Rakitan, Printer & Pengadaan Sparepart IT',
+            address: 'Jl. Budi Utomo No. 45, Timika • Telp/WA: 0811-4890-2211',
+            adminName: 'Admin SIMServis'
+        };
+
+        let activeInvoiceData = null;
+        let manualInvoiceItems = [];
+        let deleteTargetId = null;
+
+        // --- DATA CONTOH AWAL (SEED DATA) ---
+        const initialSeedServices = [
+            {
+                id: 'srv-101',
+                nota: 'SRV-20261112-001',
+                tanggal: '2026-11-12',
+                nama: 'Budi Santoso',
+                hp: '0812-4811-2233',
+                jenis: 'Laptop',
+                merk: 'Asus VivoBook A416',
+                kelengkapan: 'Unit Laptop + Charger Original',
+                keluhan: 'Laptop lemot, booting lama, minta upgrade SSD & install ulang Windows 11 + Office',
+                tindakan: 'Pemasangan SSD NVMe 512GB, migrasi data, instalasi Windows 11 Pro & cleaning kipas',
+                items: [
+                    { category: 'Sparepart', name: 'SSD NVMe M.2 512GB Kingston', qty: 1, price: 650000 },
+                    { category: 'Jasa Servis', name: 'Jasa Install Ulang OS + Backup Data + Cleaning', qty: 1, price: 150000 }
+                ],
+                status: 'Selesai',
+                garansi: '1 Tahun (Sparepart)',
+                dp: 300000
+            },
+            {
+                id: 'srv-102',
+                nota: 'SRV-20261112-002',
+                tanggal: '2026-11-12',
+                nama: 'Siti Rahmawati',
+                hp: '0852-5590-8877',
+                jenis: 'Laptop',
+                merk: 'Lenovo IdeaPad Slim 3',
+                kelengkapan: 'Unit + Tas Laptop',
+                keluhan: 'Layar LCD pecah dan bergaris akibat terjepit',
+                tindakan: 'Penggantian panel LCD 14 Inch FHD IPS baru & pengecekan engsel',
+                items: [
+                    { category: 'Sparepart', name: 'Panel LCD 14.0" Slim 30 Pin FHD', qty: 1, price: 850000 },
+                    { category: 'Jasa Servis', name: 'Jasa Pemasangan LCD & Kalibrasi', qty: 1, price: 100000 }
+                ],
+                status: 'Proses Pengerjaan',
+                garansi: '3 Bulan',
+                dp: 500000
+            },
+            {
+                id: 'srv-103',
+                nota: 'SRV-20261111-003',
+                tanggal: '2026-11-11',
+                nama: 'CV. Maju Jaya Papua',
+                hp: '0813-4400-1199',
+                jenis: 'Printer',
+                merk: 'Epson L3210 EcoTank',
+                kelengkapan: 'Unit Printer + Kabel Power & USB',
+                keluhan: 'Hasil cetak bergaris putus-putus & lampu tinta berkedip (resetter)',
+                tindakan: 'Deep cleaning printhead, kuras tinta, dan reset waste ink pad counter',
+                items: [
+                    { category: 'Jasa Servis', name: 'Servis Printhead, Kurang Tinta & Resetter', qty: 1, price: 175000 }
+                ],
+                status: 'Sudah Diambil',
+                garansi: '14 Hari',
+                dp: 175000
+            },
+            {
+                id: 'srv-104',
+                nota: 'SRV-20261112-004',
+                tanggal: '2026-11-12',
+                nama: 'Andi Pratama',
+                hp: '0821-9988-7766',
+                jenis: 'PC Desktop',
+                merk: 'PC Rakitan Core i5 Gen 12',
+                kelengkapan: 'CPU Only',
+                keluhan: 'PC sering restart sendiri saat bermain game (Overheat)',
+                tindakan: 'Penggantian thermal paste processor & penambahan fan casing',
+                items: [
+                    { category: 'Sparepart', name: 'Thermal Paste Arctic MX-4 + Fan 12cm', qty: 1, price: 135000 },
+                    { category: 'Jasa Servis', name: 'General Maintenance & Cable Management', qty: 1, price: 120000 }
+                ],
+                status: 'Antrian',
+                garansi: '1 Bulan (30 Hari)',
+                dp: 0
+            }
+        ];
+
+        // --- INISIALISASI SAAT HALAMAN DIMUAT ---
+        window.addEventListener('DOMContentLoaded', () => {
+            loadFromLocalStorage();
+            updateCurrentDateDisplay();
+            checkAuthSession();
+        });
+
+        function updateCurrentDateDisplay() {
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const todayStr = new Date().toLocaleDateString('id-ID', options);
+            const el = document.getElementById('current-date-display');
+            if (el) el.textContent = todayStr;
+        }
+
+        function loadFromLocalStorage() {
+            try {
+                const savedServices = localStorage.getItem(STORAGE_KEY_SERVICES);
+                if (savedServices) {
+                    servicesData = JSON.parse(savedServices);
+                } else {
+                    servicesData = [...initialSeedServices];
+                    saveServicesToStorage();
+                }
+
+                const savedShop = localStorage.getItem(STORAGE_KEY_SHOP);
+                if (savedShop) {
+                    shopProfile = JSON.parse(savedShop);
+                }
+                applyShopProfileToUI();
+            } catch (err) {
+                console.error('Gagal memuat data dari localStorage:', err);
+                servicesData = [...initialSeedServices];
+            }
+        }
+
+        function saveServicesToStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY_SERVICES, JSON.stringify(servicesData));
+            } catch (err) {
+                showToast('Gagal menyimpan data ke penyimpanan browser.', 'error');
+            }
+        }
+
+        // --- SISTEM AUTENTIKASI LOGIN & LOGOUT ---
+        function checkAuthSession() {
+            const isLoggedIn = sessionStorage.getItem(STORAGE_KEY_AUTH) === 'true';
+            if (isLoggedIn) {
+                showAppScreen();
+            } else {
+                showLoginScreen();
+            }
+        }
+
+        function showLoginScreen() {
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('app-screen').classList.add('hidden');
+        }
+
+        function showAppScreen() {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('app-screen').classList.remove('hidden');
+            refreshAllViews();
+        }
+
+        document.getElementById('login-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value.trim();
+            const errorBox = document.getElementById('login-error');
+            const errorText = document.getElementById('login-error-text');
+
+            if (username === 'admin' && password === 'admin321') {
+                errorBox.classList.add('hidden');
+                sessionStorage.setItem(STORAGE_KEY_AUTH, 'true');
+                showToast('Login berhasil! Selamat datang di SIMServis Komputer.', 'success');
+                showAppScreen();
+            } else {
+                errorText.textContent = 'Username atau password salah! Gunakan username "admin" dan password "admin321".';
+                errorBox.classList.remove('hidden');
+            }
+        });
+
+        function togglePasswordVisibility() {
+            const input = document.getElementById('login-password');
+            const icon = document.getElementById('password-eye-icon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        }
+
+        function fillDemoCredentials() {
+            document.getElementById('login-username').value = 'admin';
+            document.getElementById('login-password').value = 'admin321';
+            document.getElementById('login-error').classList.add('hidden');
+        }
+
+        function logoutApp() {
+            sessionStorage.removeItem(STORAGE_KEY_AUTH);
+            document.getElementById('login-form').reset();
+            showToast('Anda telah keluar dari sistem.', 'info');
+            showLoginScreen();
+        }
+
+        // --- NAVIGASI TAB & SIDEBAR ---
+        function toggleMobileSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            sidebar.classList.toggle('-translate-x-full');
+            backdrop.classList.toggle('hidden');
+        }
+
+        function switchTab(tabName) {
+            // Sembunyikan semua tab
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            
+            // Reset styling tombol navigasi
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-800', 'text-yellow-300', 'shadow-sm', 'font-semibold');
+                btn.classList.add('text-blue-100', 'hover:bg-blue-900/70', 'font-medium');
+            });
+
+            // Tampilkan tab terpilih
+            const targetTab = document.getElementById(`tab-${tabName}`);
+            if (targetTab) targetTab.classList.remove('hidden');
+
+            // Aktifkan tombol nav terpilih
+            const activeBtn = document.getElementById(`nav-${tabName}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-blue-100', 'hover:bg-blue-900/70', 'font-medium');
+                activeBtn.classList.add('bg-blue-800', 'text-yellow-300', 'shadow-sm', 'font-semibold');
+            }
+
+            // Update Judul Halaman
+            const titles = {
+                'dashboard': 'Dashboard & Data Servis',
+                'input-servis': 'Input & Manajemen Data Servis',
+                'nota-invoice': 'Nota / Invoice Servis (Siap Cetak)',
+                'profil-toko': 'Pengaturan Kop Nota & Profil Toko'
+            };
+            document.getElementById('page-title').textContent = titles[tabName] || 'SIMServis Komputer';
+
+            // Tutup sidebar mobile jika terbuka
+            const sidebar = document.getElementById('sidebar');
+            if (!sidebar.classList.contains('-translate-x-full') && window.innerWidth < 1024) {
+                toggleMobileSidebar();
+            }
+
+            // Inisialisasi konten spesifik tab
+            if (tabName === 'input-servis' && !document.getElementById('edit-service-id').value) {
+                resetServiceForm();
+            } else if (tabName === 'nota-invoice') {
+                populateInvoiceSelector();
+                if (!activeInvoiceData && servicesData.length > 0) {
+                    loadServiceIntoInvoice(servicesData[0].id);
+                } else if (!activeInvoiceData) {
+                    openBlankInvoice();
+                }
+            }
+        }
+
+        // --- FORMATTER RUPIAH & TANGGAL ---
+        function formatRupiah(amount) {
+            const num = Number(amount) || 0;
+            return 'Rp ' + num.toLocaleString('id-ID');
+        }
+
+        function formatDateIndo(dateStr) {
+            if (!dateStr) return '-';
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+            const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            const d = parseInt(parts[2], 10);
+            const m = months[parseInt(parts[1], 10) - 1] || parts[1];
+            return `${d} ${m} ${parts[0]}`;
+        }
+
+        function calculateServiceTotal(items) {
+            if (!Array.isArray(items)) return 0;
+            return items.reduce((sum, item) => sum + ((Number(item.qty) || 0) * (Number(item.price) || 0)), 0);
+        }
+
+        // --- REFRESH DASHBOARD & TABEL ---
+        function refreshAllViews() {
+            updateDashboardStats();
+            renderServiceTable();
+            populateInvoiceSelector();
+        }
+
+        function updateDashboardStats() {
+            const total = servicesData.length;
+            const proses = servicesData.filter(s => ['Antrian', 'Proses Pengerjaan', 'Menunggu Sparepart'].includes(s.status)).length;
+            const selesai = servicesData.filter(s => ['Selesai', 'Sudah Diambil'].includes(s.status)).length;
+            const pendapatan = servicesData.reduce((acc, s) => acc + calculateServiceTotal(s.items), 0);
+
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-proses').textContent = proses;
+            document.getElementById('stat-selesai').textContent = selesai;
+            document.getElementById('stat-pendapatan').textContent = formatRupiah(pendapatan);
+        }
+
+        function getStatusBadgeClass(status) {
+            switch (status) {
+                case 'Antrian': return 'bg-slate-100 text-slate-700 border-slate-200';
+                case 'Proses Pengerjaan': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+                case 'Menunggu Sparepart': return 'bg-amber-50 text-amber-800 border-amber-200';
+                case 'Selesai': return 'bg-blue-100 text-blue-800 border-blue-300';
+                case 'Sudah Diambil': return 'bg-brand-950 text-yellow-300 border-blue-900';
+                default: return 'bg-slate-100 text-slate-700 border-slate-200';
+            }
+        }
+
+        function renderServiceTable() {
+            const tbody = document.getElementById('service-table-body');
+            const emptyState = document.getElementById('empty-table-state');
+            const query = document.getElementById('search-input').value.toLowerCase().trim();
+            const statusFilter = document.getElementById('filter-status').value;
+
+            const filtered = servicesData.filter(item => {
+                const matchStatus = statusFilter === 'ALL' || item.status === statusFilter;
+                const matchQuery = !query ||
+                    item.nota.toLowerCase().includes(query) ||
+                    item.nama.toLowerCase().includes(query) ||
+                    item.merk.toLowerCase().includes(query) ||
+                    item.keluhan.toLowerCase().includes(query);
+                return matchStatus && matchQuery;
+            });
+
+            tbody.innerHTML = '';
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            emptyState.classList.add('hidden');
+
+            filtered.forEach(srv => {
+                const totalBiaya = calculateServiceTotal(srv.items);
+                const sisa = Math.max(0, totalBiaya - (Number(srv.dp) || 0));
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-blue-50/40 transition';
+                tr.innerHTML = `
+                    <td class="py-3.5 px-4 align-top">
+                        <span class="font-bold text-blue-800 block">${srv.nota}</span>
+                        <span class="text-xs text-slate-500">${formatDateIndo(srv.tanggal)}</span>
+                    </td>
+                    <td class="py-3.5 px-4 align-top">
+                        <span class="font-semibold text-slate-900 block">${srv.nama}</span>
+                        <span class="text-xs text-slate-500"><i class="fa-brands fa-whatsapp text-blue-600 mr-1"></i>${srv.hp}</span>
+                    </td>
+                    <td class="py-3.5 px-4 align-top max-w-xs">
+                        <span class="inline-block px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-100 text-[11px] font-semibold mb-1">${srv.jenis}</span>
+                        <span class="font-semibold text-slate-800 block text-xs">${srv.merk}</span>
+                        <p class="text-xs text-slate-500 line-clamp-2 mt-0.5">${srv.keluhan}</p>
+                    </td>
+                    <td class="py-3.5 px-4 align-top whitespace-nowrap">
+                        <span class="font-bold text-slate-900 block">${formatRupiah(totalBiaya)}</span>
+                        <span class="text-[11px] ${sisa === 0 && totalBiaya > 0 ? 'text-blue-700 font-semibold' : 'text-slate-500'}">
+                            ${sisa === 0 && totalBiaya > 0 ? 'Lunas' : 'Sisa: ' + formatRupiah(sisa)}
+                        </span>
+                    </td>
+                    <td class="py-3.5 px-4 align-top">
+                        <select onchange="quickUpdateStatus('${srv.id}', this.value)"
+                            class="px-2.5 py-1.5 rounded-lg border text-xs font-semibold outline-none cursor-pointer ${getStatusBadgeClass(srv.status)}">
+                            <option value="Antrian" ${srv.status === 'Antrian' ? 'selected' : ''}>Antrian</option>
+                            <option value="Proses Pengerjaan" ${srv.status === 'Proses Pengerjaan' ? 'selected' : ''}>Proses Pengerjaan</option>
+                            <option value="Menunggu Sparepart" ${srv.status === 'Menunggu Sparepart' ? 'selected' : ''}>Menunggu Sparepart</option>
+                            <option value="Selesai" ${srv.status === 'Selesai' ? 'selected' : ''}>Selesai</option>
+                            <option value="Sudah Diambil" ${srv.status === 'Sudah Diambil' ? 'selected' : ''}>Sudah Diambil</option>
+                        </select>
+                    </td>
+                    <td class="py-3.5 px-4 align-top text-right whitespace-nowrap">
+                        <div class="inline-flex items-center gap-1.5">
+                            <button type="button" onclick="printServiceById('${srv.id}')" title="Buat / Cetak Nota"
+                                class="px-2.5 py-1.5 rounded-lg bg-yellow-400 hover:bg-yellow-500 text-brand-950 text-xs font-bold inline-flex items-center gap-1 shadow-sm transition">
+                                <i class="fa-solid fa-print"></i>
+                                <span>Nota</span>
+                            </button>
+                            <button type="button" onclick="editServiceById('${srv.id}')" title="Edit Data Servis"
+                                class="p-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs transition">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <button type="button" onclick="confirmDeleteService('${srv.id}', '${srv.nota}')" title="Hapus Data"
+                                class="p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 text-xs transition">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function quickUpdateStatus(id, newStatus) {
+            const idx = servicesData.findIndex(s => s.id === id);
+            if (idx !== -1) {
+                servicesData[idx].status = newStatus;
+                saveServicesToStorage();
+                refreshAllViews();
+                showToast(`Status ${servicesData[idx].nota} diubah menjadi "${newStatus}"`, 'success');
+            }
+        }
+
+        // --- FORM INPUT & EDIT SERVIS ---
+        function generateNotaNumber() {
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            const datePrefix = `${yyyy}${mm}${dd}`;
+            const nextSeq = String(servicesData.length + 1).padStart(3, '0');
+            return `SRV-${datePrefix}-${nextSeq}`;
+        }
+
+        function resetServiceForm() {
+            document.getElementById('service-form').reset();
+            document.getElementById('edit-service-id').value = '';
+            document.getElementById('form-servis-title').textContent = 'Form Input Data Servis Komputer Baru';
+            document.getElementById('srv-nota').value = generateNotaNumber();
+            document.getElementById('srv-tanggal').value = new Date().toISOString().split('T')[0];
+            document.getElementById('srv-dp').value = 0;
+
+            const costBody = document.getElementById('cost-items-body');
+            costBody.innerHTML = '';
+            addCostItemRow({ category: 'Jasa Servis', name: '', qty: 1, price: 0 });
+            recalculateFormTotals();
+        }
+
+        function addCostItemRow(item = { category: 'Sparepart', name: '', qty: 1, price: 0 }) {
+            const costBody = document.getElementById('cost-items-body');
+            const tr = document.createElement('tr');
+            tr.className = 'cost-row bg-white';
+            tr.innerHTML = `
+                <td class="p-2">
+                    <select class="item-cat w-full px-2.5 py-2 rounded-lg border border-slate-200 text-xs font-semibold bg-blue-50/50 outline-none">
+                        <option value="Jasa Servis" ${item.category === 'Jasa Servis' ? 'selected' : ''}>Jasa Servis</option>
+                        <option value="Sparepart" ${item.category === 'Sparepart' ? 'selected' : ''}>Sparepart</option>
+                    </select>
+                </td>
+                <td class="p-2">
+                    <input type="text" class="item-name w-full px-3 py-2 rounded-lg border border-slate-200 text-xs outline-none focus:border-blue-600"
+                        placeholder="Nama jasa atau komponen sparepart..." value="${item.name || ''}" required>
+                </td>
+                <td class="p-2">
+                    <input type="number" min="1" class="item-qty w-full px-2 py-2 rounded-lg border border-slate-200 text-xs text-center font-semibold outline-none"
+                        value="${item.qty || 1}" oninput="recalculateFormTotals()">
+                </td>
+                <td class="p-2">
+                    <input type="number" min="0" class="item-price w-full px-3 py-2 rounded-lg border border-slate-200 text-xs font-semibold outline-none focus:border-blue-600"
+                        value="${item.price || 0}" oninput="recalculateFormTotals()">
+                </td>
+                <td class="p-2 text-right font-bold text-slate-800 text-xs item-subtotal whitespace-nowrap">
+                    ${formatRupiah((item.qty || 1) * (item.price || 0))}
+                </td>
+                <td class="p-2 text-center">
+                    <button type="button" onclick="removeCostRow(this)" class="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </td>
+            `;
+            costBody.appendChild(tr);
+            recalculateFormTotals();
+        }
+
+        function removeCostRow(btn) {
+            const rows = document.querySelectorAll('#cost-items-body .cost-row');
+            if (rows.length <= 1) {
+                showToast('Minimal harus ada 1 baris rincian biaya.', 'error');
+                return;
+            }
+            btn.closest('tr').remove();
+            recalculateFormTotals();
+        }
+
+        function recalculateFormTotals() {
+            let total = 0;
+            document.querySelectorAll('#cost-items-body .cost-row').forEach(row => {
+                const qty = Number(row.querySelector('.item-qty').value) || 0;
+                const price = Number(row.querySelector('.item-price').value) || 0;
+                const sub = qty * price;
+                row.querySelector('.item-subtotal').textContent = formatRupiah(sub);
+                total += sub;
+            });
+
+            const dp = Number(document.getElementById('srv-dp').value) || 0;
+            const sisa = Math.max(0, total - dp);
+
+            document.getElementById('form-total-display').textContent = formatRupiah(total);
+            document.getElementById('form-dp-display').textContent = formatRupiah(dp);
+            document.getElementById('form-sisa-display').textContent = formatRupiah(sisa);
+        }
+
+        function collectFormData() {
+            const items = [];
+            document.querySelectorAll('#cost-items-body .cost-row').forEach(row => {
+                const category = row.querySelector('.item-cat').value;
+                const name = row.querySelector('.item-name').value.trim();
+                const qty = Number(row.querySelector('.item-qty').value) || 1;
+                const price = Number(row.querySelector('.item-price').value) || 0;
+                if (name) {
+                    items.push({ category, name, qty, price });
+                }
+            });
+
+            return {
+                id: document.getElementById('edit-service-id').value || 'srv-' + Date.now(),
+                nota: document.getElementById('srv-nota').value.trim(),
+                tanggal: document.getElementById('srv-tanggal').value,
+                nama: document.getElementById('srv-nama').value.trim(),
+                hp: document.getElementById('srv-hp').value.trim(),
+                jenis: document.getElementById('srv-jenis').value,
+                merk: document.getElementById('srv-merk').value.trim(),
+                kelengkapan: document.getElementById('srv-kelengkapan').value.trim() || '-',
+                keluhan: document.getElementById('srv-keluhan').value.trim(),
+                tindakan: document.getElementById('srv-tindakan').value.trim() || 'Pengecekan & perbaikan standar',
+                items: items.length > 0 ? items : [{ category: 'Jasa Servis', name: 'Biaya Pengecekan / Servis', qty: 1, price: 0 }],
+                status: document.getElementById('srv-status').value,
+                garansi: document.getElementById('srv-garansi').value,
+                dp: Number(document.getElementById('srv-dp').value) || 0
+            };
+        }
+
+        document.getElementById('service-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveServiceRecord(false);
+        });
+
+        function saveAndPrintService() {
+            const form = document.getElementById('service-form');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+            saveServiceRecord(true);
+        }
+
+        function saveServiceRecord(redirectToInvoice = false) {
+            const record = collectFormData();
+            const existingIndex = servicesData.findIndex(s => s.id === record.id);
+
+            if (existingIndex !== -1) {
+                servicesData[existingIndex] = record;
+                showToast(`Data servis ${record.nota} berhasil diperbarui!`, 'success');
+            } else {
+                servicesData.unshift(record);
+                showToast(`Data servis baru ${record.nota} berhasil disimpan!`, 'success');
+            }
+
+            saveServicesToStorage();
+            refreshAllViews();
+            document.getElementById('edit-service-id').value = '';
+
+            if (redirectToInvoice) {
+                printServiceById(record.id);
+            } else {
+                switchTab('dashboard');
+            }
+        }
+
+        function editServiceById(id) {
+            const srv = servicesData.find(s => s.id === id);
+            if (!srv) return;
+
+            document.getElementById('edit-service-id').value = srv.id;
+            document.getElementById('form-servis-title').textContent = `Edit Data Servis (${srv.nota})`;
+            document.getElementById('srv-nota').value = srv.nota;
+            document.getElementById('srv-tanggal').value = srv.tanggal;
+            document.getElementById('srv-nama').value = srv.nama;
+            document.getElementById('srv-hp').value = srv.hp;
+            document.getElementById('srv-jenis').value = srv.jenis;
+            document.getElementById('srv-merk').value = srv.merk;
+            document.getElementById('srv-kelengkapan').value = srv.kelengkapan === '-' ? '' : srv.kelengkapan;
+            document.getElementById('srv-keluhan').value = srv.keluhan;
+            document.getElementById('srv-tindakan').value = srv.tindakan;
+            document.getElementById('srv-status').value = srv.status;
+            document.getElementById('srv-garansi').value = srv.garansi;
+            document.getElementById('srv-dp').value = srv.dp || 0;
+
+            const costBody = document.getElementById('cost-items-body');
+            costBody.innerHTML = '';
+            srv.items.forEach(item => addCostItemRow(item));
+            recalculateFormTotals();
+
+            switchTab('input-servis');
+        }
+
+        // --- HAPUS DATA DENGAN MODAL KONFIRMASI ---
+        function confirmDeleteService(id, nota) {
+            deleteTargetId = id;
+            document.getElementById('confirm-title').textContent = `Hapus ${nota}?`;
+            document.getElementById('confirm-message').textContent = 'Data transaksi servis yang dihapus tidak dapat dikembalikan.';
+            const modal = document.getElementById('confirm-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeConfirmModal() {
+            deleteTargetId = null;
+            const modal = document.getElementById('confirm-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        document.getElementById('confirm-yes-btn').addEventListener('click', () => {
+            if (deleteTargetId) {
+                servicesData = servicesData.filter(s => s.id !== deleteTargetId);
+                saveServicesToStorage();
+                refreshAllViews();
+                showToast('Data servis berhasil dihapus.', 'info');
+            }
+            closeConfirmModal();
+        });
+
+        // --- SISTEM NOTA / INVOICE & CETAK ---
+        function populateInvoiceSelector() {
+            const selector = document.getElementById('invoice-service-selector');
+            if (!selector) return;
+            const currentVal = selector.value;
+            selector.innerHTML = '<option value="">-- Buat Nota Manual / Kosong --</option>';
+            servicesData.forEach(srv => {
+                const opt = document.createElement('option');
+                opt.value = srv.id;
+                opt.textContent = `${srv.nota} - ${srv.nama} (${srv.merk})`;
+                selector.appendChild(opt);
+            });
+            if (currentVal) selector.value = currentVal;
+        }
+
+        function printServiceById(id) {
+            switchTab('nota-invoice');
+            const selector = document.getElementById('invoice-service-selector');
+            selector.value = id;
+            loadServiceIntoInvoice(id);
+        }
+
+        function loadServiceIntoInvoice(id) {
+            if (!id) {
+                openBlankInvoice();
+                return;
+            }
+            const srv = servicesData.find(s => s.id === id);
+            if (!srv) return;
+
+            activeInvoiceData = JSON.parse(JSON.stringify(srv));
+            populateQuickEditorFields(activeInvoiceData);
+            renderInvoicePreview(activeInvoiceData);
+        }
+
+        function openBlankInvoice() {
+            switchTab('nota-invoice');
+            document.getElementById('invoice-service-selector').value = '';
+            const blankData = {
+                nota: generateNotaNumber(),
+                tanggal: new Date().toISOString().split('T')[0],
+                nama: 'Pelanggan Umum',
+                hp: '-',
+                jenis: 'Laptop / PC',
+                merk: '-',
+                kelengkapan: 'Unit',
+                keluhan: 'Servis / Perbaikan Perangkat',
+                tindakan: 'Pengecekan & Perbaikan',
+                status: 'Selesai',
+                garansi: '30 Hari',
+                dp: 0,
+                items: [
+                    { category: 'Jasa Servis', name: 'Jasa Servis Komputer / Laptop', qty: 1, price: 100000 }
+                ]
+            };
+            activeInvoiceData = blankData;
+            populateQuickEditorFields(blankData);
+            renderInvoicePreview(blankData);
+
+            // Otomatis buka panel editor manual agar user mudah mengisi nota langsung
+            document.getElementById('quick-invoice-editor').classList.remove('hidden');
+        }
+
+        function toggleQuickEditInvoice() {
+            const editor = document.getElementById('quick-invoice-editor');
+            editor.classList.toggle('hidden');
+        }
+
+        function populateQuickEditorFields(data) {
+            document.getElementById('inv-edit-nota').value = data.nota;
+            document.getElementById('inv-edit-tanggal').value = data.tanggal;
+            document.getElementById('inv-edit-nama').value = data.nama;
+            document.getElementById('inv-edit-hp').value = data.hp;
+            document.getElementById('inv-edit-perangkat').value = `${data.jenis} - ${data.merk}`;
+            document.getElementById('inv-edit-keluhan').value = data.keluhan;
+            document.getElementById('inv-edit-status').value = data.status;
+            document.getElementById('inv-edit-garansi').value = data.garansi;
+            document.getElementById('inv-edit-dp').value = data.dp || 0;
+
+            manualInvoiceItems = JSON.parse(JSON.stringify(data.items));
+            renderManualInvoiceEditorItems();
+        }
+
+        function renderManualInvoiceEditorItems() {
+            const container = document.getElementById('inv-edit-items-list');
+            container.innerHTML = '';
+            manualInvoiceItems.forEach((item, idx) => {
+                const div = document.createElement('div');
+                div.className = 'grid grid-cols-12 gap-2 items-center';
+                div.innerHTML = `
+                    <select onchange="updateManualItem(${idx}, 'category', this.value)" class="col-span-3 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs">
+                        <option value="Jasa Servis" ${item.category === 'Jasa Servis' ? 'selected' : ''}>Jasa Servis</option>
+                        <option value="Sparepart" ${item.category === 'Sparepart' ? 'selected' : ''}>Sparepart</option>
+                    </select>
+                    <input type="text" value="${item.name}" oninput="updateManualItem(${idx}, 'name', this.value)" placeholder="Deskripsi item" class="col-span-5 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs">
+                    <input type="number" min="1" value="${item.qty}" oninput="updateManualItem(${idx}, 'qty', this.value)" class="col-span-1 px-2 py-1.5 rounded-lg border border-slate-200 text-xs text-center">
+                    <input type="number" min="0" value="${item.price}" oninput="updateManualItem(${idx}, 'price', this.value)" class="col-span-2 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs">
+                    <button type="button" onclick="removeManualItem(${idx})" class="col-span-1 text-red-500 hover:bg-red-50 py-1.5 rounded-lg text-xs">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function addManualInvoiceItem() {
+            manualInvoiceItems.push({ category: 'Sparepart', name: 'Item Baru', qty: 1, price: 50000 });
+            renderManualInvoiceEditorItems();
+            syncManualInvoicePreview();
+        }
+
+        function removeManualItem(idx) {
+            if (manualInvoiceItems.length <= 1) return;
+            manualInvoiceItems.splice(idx, 1);
+            renderManualInvoiceEditorItems();
+            syncManualInvoicePreview();
+        }
+
+        function updateManualItem(idx, field, val) {
+            if (field === 'qty' || field === 'price') {
+                manualInvoiceItems[idx][field] = Number(val) || 0;
+            } else {
+                manualInvoiceItems[idx][field] = val;
+            }
+            syncManualInvoicePreview();
+        }
+
+        function syncManualInvoicePreview() {
+            const updated = {
+                nota: document.getElementById('inv-edit-nota').value || '-',
+                tanggal: document.getElementById('inv-edit-tanggal').value,
+                nama: document.getElementById('inv-edit-nama').value || '-',
+                hp: document.getElementById('inv-edit-hp').value || '-',
+                jenis: '',
+                merk: document.getElementById('inv-edit-perangkat').value || '-',
+                kelengkapan: activeInvoiceData ? activeInvoiceData.kelengkapan : '-',
+                keluhan: document.getElementById('inv-edit-keluhan').value || '-',
+                tindakan: activeInvoiceData ? activeInvoiceData.tindakan : '-',
+                status: document.getElementById('inv-edit-status').value || 'Selesai',
+                garansi: document.getElementById('inv-edit-garansi').value || '-',
+                dp: Number(document.getElementById('inv-edit-dp').value) || 0,
+                items: manualInvoiceItems
+            };
+            renderInvoicePreview(updated);
+        }
+
+        function renderInvoicePreview(data) {
+            document.getElementById('print-nota-no').textContent = data.nota;
+            document.getElementById('print-nota-date').textContent = `Tanggal: ${formatDateIndo(data.tanggal)}`;
+            document.getElementById('print-cust-name').textContent = data.nama;
+            document.getElementById('print-cust-phone').textContent = data.hp;
+            document.getElementById('print-srv-status').textContent = data.status;
+
+            const deviceTitle = data.jenis ? `${data.jenis} - ${data.merk}` : data.merk;
+            document.getElementById('print-device-info').textContent = deviceTitle;
+            document.getElementById('print-device-acc').textContent = data.kelengkapan || '-';
+            document.getElementById('print-warranty').textContent = data.garansi || '-';
+            document.getElementById('print-complaint').textContent = data.keluhan || '-';
+            document.getElementById('print-action').textContent = data.tindakan || '-';
+
+            // Render baris item nota
+            const tbody = document.getElementById('print-items-body');
+            tbody.innerHTML = '';
+            let total = 0;
+
+            data.items.forEach((item, index) => {
+                const sub = (Number(item.qty) || 0) * (Number(item.price) || 0);
+                total += sub;
+                const tr = document.createElement('tr');
+                tr.className = index % 2 === 1 ? 'bg-blue-50/40' : 'bg-white';
+                tr.innerHTML = `
+                    <td class="py-2 px-3 text-center text-slate-500">${index + 1}</td>
+                    <td class="py-2 px-3 font-semibold text-blue-800">${item.category}</td>
+                    <td class="py-2 px-3 text-slate-900 font-medium">${item.name}</td>
+                    <td class="py-2 px-3 text-center">${item.qty}</td>
+                    <td class="py-2 px-3 text-right">${formatRupiah(item.price)}</td>
+                    <td class="py-2 px-3 text-right font-bold text-slate-900">${formatRupiah(sub)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            const dp = Number(data.dp) || 0;
+            const sisa = Math.max(0, total - dp);
+
+            document.getElementById('print-total').textContent = formatRupiah(total);
+            document.getElementById('print-dp').textContent = formatRupiah(dp);
+            document.getElementById('print-balance').textContent = formatRupiah(sisa);
+
+            const paidBadge = document.getElementById('print-paid-badge');
+            if (total > 0 && sisa === 0) {
+                paidBadge.classList.remove('hidden');
+            } else {
+                paidBadge.classList.add('hidden');
+            }
+
+            document.getElementById('print-sign-customer').textContent = `( ${data.nama || 'Pelanggan'} )`;
+            document.getElementById('print-sign-admin').textContent = `( ${shopProfile.adminName} )`;
+        }
+
+        // --- PENGATURAN PROFIL TOKO ---
+        function applyShopProfileToUI() {
+            document.getElementById('print-shop-name').textContent = shopProfile.name;
+            document.getElementById('print-shop-tagline').textContent = shopProfile.tagline;
+            document.getElementById('print-shop-address').textContent = shopProfile.address;
+            document.getElementById('print-sign-admin').textContent = `( ${shopProfile.adminName} )`;
+
+            document.getElementById('shop-name-input').value = shopProfile.name;
+            document.getElementById('shop-tagline-input').value = shopProfile.tagline;
+            document.getElementById('shop-address-input').value = shopProfile.address;
+            document.getElementById('shop-admin-input').value = shopProfile.adminName;
+        }
+
+        document.getElementById('shop-profile-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            shopProfile = {
+                name: document.getElementById('shop-name-input').value.trim(),
+                tagline: document.getElementById('shop-tagline-input').value.trim(),
+                address: document.getElementById('shop-address-input').value.trim(),
+                adminName: document.getElementById('shop-admin-input').value.trim()
+            };
+            localStorage.setItem(STORAGE_KEY_SHOP, JSON.stringify(shopProfile));
+            applyShopProfileToUI();
+            showToast('Pengaturan Kop Nota & Profil Toko berhasil disimpan!', 'success');
+        });
+
+        // --- TOAST NOTIFICATION HELPER ---
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const styles = {
+                success: 'bg-brand-950 text-white border-blue-700',
+                error: 'bg-red-600 text-white border-red-500',
+                info: 'bg-blue-800 text-white border-blue-600'
+            };
+            const icons = {
+                success: 'fa-circle-check text-yellow-400',
+                error: 'fa-circle-exclamation text-white',
+                info: 'fa-circle-info text-yellow-300'
+            };
+
+            toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border text-xs sm:text-sm font-medium transform transition-all duration-300 translate-x-4 opacity-0 ${styles[type] || styles.info}`;
+            toast.innerHTML = `
+                <i class="fa-solid ${icons[type] || icons.info} text-base"></i>
+                <span>${message}</span>
+            `;
+
+            container.appendChild(toast);
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-x-4', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('translate-x-4', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3200);
+        }
+    </script>
+</body>
+</html>
