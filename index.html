@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
+
+    document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+    alert('Klik kanan dinonaktifkan di halaman ini!'); // Hapus baris ini jika tidak ingin memunculkan peringatan
+});
+    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hcs_Computer - Sistem Informasi Jasa Servis & Invoice</title>
@@ -1792,5 +1798,8 @@
             }, 3200);
         }
     </script>
+
+
+    
 </body>
 </html>
